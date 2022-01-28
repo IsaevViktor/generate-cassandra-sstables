@@ -24,6 +24,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,12 +47,15 @@ public class BulkLoad
     /** Default output directory */
     public static String DEFAULT_OUTPUT_DIR = "./data";
 
-    public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+    public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+                                                                                   /* 2021-02-06 05:31:24.088902+03*/
+    //public static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
 
     /** Keyspace name */
-    public static final String KEYSPACE = "test";
+    public static final String KEYSPACE = "omniowner";
     /** Table name */
-    public static final String TABLE = "orders";
+    public static final String TABLE = "order_status_change_t";
 
     /**
      * Schema for bulk loading table.
@@ -61,8 +66,8 @@ public class BulkLoad
             "                             id uuid," +
             "                             change_date timestamp," +
             "                             changer_id text," +
-            "                             excecutions_status text," +
-            "                             location_id text," +
+            "                             execution_status text," +
+            "                             location_id uuid," +
             "                             mile_type text," +
             "                             order_id uuid," +
             "                             sender_id uuid STATIC," +
@@ -76,7 +81,7 @@ public class BulkLoad
      * It is like prepared statement. You fill in place holder for each data.
      */
     public static final String INSERT_STMT = String.format("INSERT INTO %s.%s (" +
-                                                               "id, change_date, changer_id, excecutions_status, location_id, mile_type, order_id, sender_id, sender_order_id, status, status_change_reason_desc" +
+                                                               "id,order_id,status,change_date,changer_id,execution_status,status_change_reason_desc,location_id,mile_type,sender_order_id,sender_id" +
                                                            ") VALUES (" +
                                                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?" +
                                                            ")", KEYSPACE, TABLE);
@@ -123,7 +128,7 @@ public class BulkLoad
 
         try (
                 BufferedReader reader = Files.newBufferedReader(Paths.get(filename));
-                CsvListReader csvReader = new CsvListReader(reader, CsvPreference.EXCEL_NORTH_EUROPE_PREFERENCE)
+                CsvListReader csvReader = new CsvListReader(reader, CsvPreference.EXCEL_PREFERENCE)
         ) {
 
             csvReader.getHeader(true);
@@ -134,19 +139,19 @@ public class BulkLoad
                 // We use Java types here based on
                 // http://www.datastax.com/drivers/java/2.0/com/datastax/driver/core/DataType.Name.html#asJavaClass%28%29
                 writer.addRow(
-                        UUID.fromString(line.get(0)),
-                        DATE_FORMAT.parse(line.get(1)),
-                        line.get(2),
-                        line.get(3),
-                        line.get(4),
-                        line.get(5),
-                        UUID.fromString(line.get(6)),
-                        UUID.fromString(line.get(7)),
-                        line.get(8),
-                        line.get(9),
-                        line.get(10));
+                        line.get(0)==null?null:UUID.fromString(line.get(0)),
+                        line.get(1)==null?null:UUID.fromString(line.get(1)),
+                        line.get(2)==null?null:line.get(2),
+                        line.get(3)==null?null:DATE_FORMAT.parse(line.get(3)),
+                        line.get(4)==null?null:line.get(4),
+                        line.get(5)==null?null:line.get(5),
+                        line.get(6)==null?null:line.get(6),
+                        line.get(7)==null?null:UUID.fromString(line.get(7)),
+                        line.get(8)==null?null:line.get(8),
+                        line.get(9)==null?null:line.get(9),
+                        line.get(10)==null?null:UUID.fromString(line.get(10)));
             }
-        } catch (InvalidRequestException | ParseException | IOException e) {
+        } catch (InvalidRequestException | IOException | ParseException e) {
             e.printStackTrace();
         }
 
